@@ -174,18 +174,22 @@
     <div id="messageBoard">
         <h1>Anonymous Chats</h1>
 
+        <!-- Current Username Display -->
         <div id="currentUsername"></div>
 
+        <!-- Username Input Section -->
         <div id="usernameSection">
             <input id="usernameInput" type="text" placeholder="Enter your username" />
             <button onclick="setUsername()">Set Username</button>
         </div>
 
+        <!-- Password Input Section (hidden initially) -->
         <div id="passwordSection" style="text-align: center; display: none;">
             <input id="passwordInput" type="password" placeholder="Enter password" />
             <button onclick="checkPassword()">Submit</button>
         </div>
 
+        <!-- Change Username Section -->
         <div id="changeUsernameSection" style="display: none;">
             <button onclick="promptChangeUsername()">Change Username</button>
         </div>
@@ -200,57 +204,50 @@
 
     <script>
         let userId = "user_" + Math.floor(Math.random() * 100000);
-        let username = localStorage.getItem('username') || "Anonymous";  
-        let isAtBottom = true;
+        let username = localStorage.getItem('username') || "Anonymous";  // Get username from localStorage or set default
+        let isAtBottom = true;  // Track if the user is at the bottom of the messages
 
+        // Display current username
         function updateUsernameDisplay() {
             document.getElementById("currentUsername").innerText = `Current Username: ${username}`;
         }
 
+        // If a username is already saved in localStorage, hide the input section and show the Change Username button
         if (username !== "Anonymous") {
             document.getElementById("usernameSection").style.display = "none";
-            document.getElementById("changeUsernameSection").style.display = "block";  
-            updateUsernameDisplay();  
+            document.getElementById("changeUsernameSection").style.display = "block";  // Show Change Username button
+            updateUsernameDisplay();  // Display the current username
         }
 
+        // Set the username and check for admin-related names
         function setUsername() {
             const input = document.getElementById("usernameInput");
             const enteredUsername = input.value.trim();
 
             if (enteredUsername) {
                 username = enteredUsername;
-                localStorage.setItem('username', username);  
-                document.getElementById("usernameSection").style.display = "none";
-                document.getElementById("changeUsernameSection").style.display = "block";  
-                updateUsernameDisplay();  
+                localStorage.setItem('username', username);  // Save the username to localStorage
+                document.getElementById("usernameSection").style.display = "none"; // Hide username input after setting it
+                document.getElementById("changeUsernameSection").style.display = "block"; // Show Change Username button
+                updateUsernameDisplay();  // Update the displayed username
             } else {
                 alert("Please enter a username.");
             }
         }
 
+        // Check if the password entered matches the predefined password
         function checkPassword() {
             const passwordInput = document.getElementById("passwordInput").value.trim();
             const correctPassword = "padayonparatukdo";
 
             if (passwordInput === correctPassword) {
-                localStorage.setItem('username', username);  
-                document.getElementById("passwordSection").style.display = "none";  
-                document.getElementById("changeUsernameSection").style.display = "block";  
-                updateUsernameDisplay();  
+                localStorage.setItem('username', username);  // Save the admin username
+                document.getElementById("passwordSection").style.display = "none"; // Hide password input
+                document.getElementById("changeUsernameSection").style.display = "block"; // Show Change Username button
+                updateUsernameDisplay();  // Update the displayed username
                 alert("Username set successfully!");
             } else {
                 alert("Incorrect password. Please try again.");
-            }
-        }
-
-        function promptChangeUsername() {
-            const newUsername = prompt("Enter your new username:");
-
-            if (newUsername) {
-                username = newUsername;
-                localStorage.setItem('username', username);  
-                updateUsernameDisplay();  
-                alert("Username changed successfully!");
             }
         }
 
@@ -293,7 +290,7 @@
 
             const bubbleHTML = ` 
                 <div class="bubble">
-                    <p style="font-size: 0.9rem; color: #555; margin: 0 0 8px 0;"><strong>${username}</strong></p>
+                    <p style="font-size: 0.9rem; color: #555; margin: 0 0 8px 0;"><strong>${username}</strong></p> <!-- Smaller username -->
                     <p>${message}</p>
                     <div class="timestamp">${new Date(timestamp).toLocaleTimeString()}</div>
                 </div>
@@ -316,7 +313,7 @@
 
         window.onload = function() {
             fetchMessages();
-            setInterval(fetchMessages, 1000); 
+            setInterval(fetchMessages, 1000); // Fetch messages every second
         };
     </script>
 
