@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Chats</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e9eff6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        #messageBoard {
+            background-color: #ffffff;
+            width: 90%;
+            max-width: 450px;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a4a4a;
+            margin: 20px 0;
+            font-size: 1.8rem;
+        }
+
+        #currentUsername {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #555;
+        }
+
+        #messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f4f7fc;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            max-width: 80%;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.received {
+            align-self: flex-start;
+        }
+
+        .bubble {
+            position: relative;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 1rem;
+            line-height: 1.4;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .sent .bubble {
+            background: linear-gradient(135deg, #6c63ff, #867bff);
+            color: white;
+        }
+
+        .received .bubble {
+            background: #ffffff;
+            border: 1px solid #dfe4ea;
+            color: #555;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .userIcon {
+            width: 36px;
+            height: 36px;
+            background: #6c63ff;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin: 0 10px;
+        }
+
+        #footer {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: #ffffff;
+            border-top: 1px solid #ddd;
+        }
+
+        textarea {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #dfe4ea;
+            border-radius: 20px;
+            font-size: 1rem;
+            outline: none;
+            resize: none;
+            margin-right: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #6c63ff, #867bff);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(108, 99, 255, 0.3);
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        #usernameSection {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #usernameInput {
+            padding: 10px 15px;
+            font-size: 1rem;
+            border-radius: 20px;
+            border: 1px solid #dfe4ea;
+            margin-right: 10px;
+        }
+
+        #passwordInput {
+            padding: 10px 15px;
+            font-size: 1rem;
+            border-radius: 20px;
+            border: 1px solid #dfe4ea;
+            margin-right: 10px;
+            display: none;
+        }
+
+        #changeUsernameSection {
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="messageBoard">
+        <h1>Anonymous Chats</h1>
+
+        <!-- Current Username Display -->
+        <div id="currentUsername"></div>
+
+        <!-- Username Input Section -->
+        <div id="usernameSection">
+            <input id="usernameInput" type="text" placeholder="Enter your username" />
+            <button onclick="setUsername()">Set Username</button>
+        </div>
+
+        <!-- Password Input Section (hidden initially) -->
+        <div id="passwordSection" style="text-align: center; display: none;">
+            <input id="passwordInput" type="password" placeholder="Enter password" />
+            <button onclick="checkPassword()">Submit</button>
+        </div>
+
+        <!-- Change Username Section -->
+        <div id="changeUsernameSection" style="display: none;">
+            <button onclick="promptChangeUsername()">Change Username</button>
+        </div>
+
+        <div id="messages"></div>
+
+        <div id="footer">
+            <textarea id="messageInput" rows="2" placeholder="Write a message..."></textarea>
+            <button onclick="submitMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let userId = "user_" + Math.floor(Math.random() * 100000);
+        let username = localStorage.getItem('username') || "Anonymous";  // Get username from localStorage or set default
+        let isAtBottom = true;
+
+        // Display current username
+        function updateUsernameDisplay() {
+            document.getElementById("currentUsername").innerText = `Current Username: ${username}`;
+        }
+
+        // If a username is already saved in localStorage, hide the input section and show the Change Username button
+        if (username !== "Anonymous") {
+            document.getElementById("usernameSection").style.display = "none";
+            document.getElementById("changeUsernameSection").style.display = "block";  // Show Change Username button
+            updateUsernameDisplay();  // Display the current username
+        }
+
+        // Set the username and check for admin-related names
+        function setUsername() {
+            const input = document.getElementById("usernameInput");
+            const enteredUsername = input.value.trim();
+
+            if (enteredUsername) {
+                // Check if username contains admin-related keywords
+                const adminKeywords = ["admin", "administrator", "root", "moderator"];
+                const lowercasedUsername = enteredUsername.toLowerCase();
+
+                if (adminKeywords.some(keyword => lowercasedUsername.includes(keyword))) {
+                    document.getElementById("usernameSection").style.display = "none"; // Hide username input
+                    document.getElementById("passwordSection").style.display = "block"; // Show password input
+                } else {
+                    username = enteredUsername;
+                    localStorage.setItem('username', username);  // Save the username to localStorage
+                    document.getElementById("usernameSection").style.display = "none"; // Hide username input after setting it
+                    document.getElementById("changeUsernameSection").style.display = "block"; // Show Change Username button
+                    updateUsernameDisplay();  // Update the displayed username
+                }
+            } else {
+                alert("Please enter a username.");
+            }
+        }
+
+        // Check if the password entered matches the predefined password
+        function checkPassword() {
+            const passwordInput = document.getElementById("passwordInput").value.trim();
+            const correctPassword = "padayonparatukdo";
+
+            if (passwordInput === correctPassword) {
+                // Password is correct, save the username and proceed
+                username = localStorage.getItem('username') || "Anonymous";
+                localStorage.setItem('username', username);  // Save the username to localStorage
+                document.getElementById("passwordSection").style.display = "none"; // Hide password input
+                document.getElementById("changeUsernameSection").style.display = "block"; // Show Change Username button
+                updateUsernameDisplay();  // Update the displayed username
+                alert("Username set successfully!");
+            } else {
+                alert("Incorrect password. Please try again.");
+            }
+        }
+
+        // Prompt the user to change their username
+        function promptChangeUsername() {
+            const newUsername = prompt("Enter your new username:");
+
+            if (newUsername) {
+                const adminKeywords = ["admin", "administrator", "root", "moderator"];
+                const lowercasedUsername = newUsername.toLowerCase();
+
+                if (adminKeywords.some(keyword => lowercasedUsername.includes(keyword))) {
+                    alert("You cannot use admin-related words in your username.");
+                } else {
+                    username = newUsername;
+                    localStorage.setItem('username', username);  // Save the new username to localStorage
+                    updateUsernameDisplay();  // Update the displayed username
+                    alert("Username changed successfully!");
+                }
+            }
+        }
+
+        function submitMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+
+            if (message) {
+                const timestamp = new Date().toISOString();
+
+                appendMessage({ senderId: userId, message, timestamp, username }, true);
+
+                google.script.run.saveMessage([message, timestamp, username]);
+
+                messageInput.value = '';
+            } else {
+                alert("Please enter a message.");
+            }
+        }
+
+        function fetchMessages() {
+            google.script.run.withSuccessHandler(function(messages) {
+                const messagesContainer = document.getElementById('messages');
+                const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.clientHeight === messagesContainer.scrollTop;
+
+                messagesContainer.innerHTML = '';
+                messages.forEach(function(message) {
+                    appendMessage({ senderId: "unknown", message: message[0], timestamp: message[1], username: message[2] });
+                });
+
+                if (wasAtBottom) {
+                    isAtBottom = true;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } else {
+                    isAtBottom = false;
+                }
+            }).getMessages();
+        }
+
+        function appendMessage({ senderId, message, timestamp, username }, isSent = false) {
+            const messagesContainer = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', isSent ? 'sent' : 'received');
+
+            const bubbleHTML = ` 
+                <div class="bubble">
+                    <p style="font-size: 0.9rem; color: #555; margin: 0 0 8px 0;"><strong>${username}</strong></p> <!-- Smaller username -->
+                    <p>${message}</p>
+                    <div class="timestamp">${new Date(timestamp).toLocaleTimeString()}</div>
+                </div>
+            `;
+            if (!isSent) {
+                messageElement.innerHTML = `<div class="userIcon">👤</div>${bubbleHTML}`;
+            } else {
+                messageElement.innerHTML = bubbleHTML;
+            }
+
+            messagesContainer.appendChild(messageElement);
+
+            if (isAtBottom) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        window.onload = function() {
+            fetchMessages();
+            setInterval(fetchMessages, 1000); // Check for new messages every second
+        };
+    </script>
+
+</body>
+</html>
