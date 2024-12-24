@@ -48,6 +48,7 @@
             padding: 20px;
             overflow-y: auto;
             background: #f4f7fc;
+            scrollbar-width: thin;
         }
 
         .message {
@@ -159,7 +160,7 @@
             border-radius: 20px;
             border: 1px solid #dfe4ea;
             margin-right: 10px;
-            display: none;
+            display: block; /* Ensure password input is shown */
         }
 
         #changeUsernameSection {
@@ -204,19 +205,21 @@
     <script>
         let userId = "user_" + Math.floor(Math.random() * 100000);
         let username = localStorage.getItem('username') || "Anonymous";  // Get username from localStorage or set default
-        let isAtBottom = true;
+        let isAtBottom = true;  // Track if the user is at the bottom of the messages
 
         // Display current username
         function updateUsernameDisplay() {
             document.getElementById("currentUsername").innerText = `Current Username: ${username}`;
         }
 
+        // If a username is already saved in localStorage, hide the input section and show the Change Username button
         if (username !== "Anonymous") {
             document.getElementById("usernameSection").style.display = "none";
             document.getElementById("changeUsernameSection").style.display = "block";  // Show Change Username button
             updateUsernameDisplay();  // Display the current username
         }
 
+        // Set the username and check for admin-related names
         function setUsername() {
             const input = document.getElementById("usernameInput");
             const enteredUsername = input.value.trim();
@@ -229,6 +232,7 @@
                 if (adminKeywords.some(keyword => lowercasedUsername.includes(keyword))) {
                     document.getElementById("usernameSection").style.display = "none"; // Hide username input
                     document.getElementById("passwordSection").style.display = "block"; // Show password input
+                    username = enteredUsername; // Store the entered username as admin
                 } else {
                     username = enteredUsername;
                     localStorage.setItem('username', username);  // Save the username to localStorage
@@ -241,13 +245,14 @@
             }
         }
 
+        // Check if the password entered matches the predefined password
         function checkPassword() {
             const passwordInput = document.getElementById("passwordInput").value.trim();
             const correctPassword = "padayonparatukdo";
 
             if (passwordInput === correctPassword) {
-                username = localStorage.getItem('username') || "Anonymous";
-                localStorage.setItem('username', username);  // Save the username to localStorage
+                // Password is correct, save the username and proceed
+                localStorage.setItem('username', username);  // Save the admin username
                 document.getElementById("passwordSection").style.display = "none"; // Hide password input
                 document.getElementById("changeUsernameSection").style.display = "block"; // Show Change Username button
                 updateUsernameDisplay();  // Update the displayed username
@@ -257,6 +262,7 @@
             }
         }
 
+        // Prompt the user to change their username
         function promptChangeUsername() {
             const newUsername = prompt("Enter your new username:");
 
@@ -284,17 +290,7 @@
 
                 appendMessage({ senderId: userId, message, timestamp, username }, true);
 
-                // Send message to Google Apps Script
-                fetch('https://script.google.com/macros/s/AKfycbzrXgjaXhfEzZWbCL4GIK5eA-ufLcIN7IWB3JW-cFZcCJuXlf21ALVe7QJkK0HHwWjK/exec', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message, timestamp, username }),
-                })
-                .then(response => response.json())
-                .then(responseData => console.log(responseData))
-                .catch(error => console.error('Error:', error));
+                google.script.run.saveMessage([message, timestamp, username]);
 
                 messageInput.value = '';
             } else {
@@ -303,48 +299,52 @@
         }
 
         function fetchMessages() {
-            fetch('https://script.google.com/macros/s/AKfycbzrXgjaXhfEzZWbCL4GIK5eA-ufLcIN7IWB3JW-cFZcCJuXlf21ALVe7QJkK0HHwWjK/exec')
-                .then(response => response.json())
-                .then(messages => {
-                    const messagesContainer = document.getElementById('messages');
-                    const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop === messagesContainer.clientHeight;
+            google.script.run.withSuccessHandler(function(messages) {
+                const messagesContainer = document.getElementById('messages');
 
-                    messagesContainer.innerHTML = '';
-                    messages.forEach(message => {
-                        appendMessage({ message: message[0], timestamp: message[1], username: message[2] });
-                    });
+                messagesContainer.innerHTML = '';
+                messages.forEach(function(message) {
+                    appendMessage({ senderId: "unknown", message: message[0], timestamp: message[1], username: message[2] });
+                });
 
-                    if (wasAtBottom) {
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+                if (isAtBottom) {
+                    // Only scroll if the user is at the bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }).getMessages();
         }
 
-        function appendMessage({ message, timestamp, username }, isSent = false) {
+        function appendMessage({ senderId, message, timestamp, username }, isSent = false) {
             const messagesContainer = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', isSent ? 'sent' : 'received');
-            const bubbleHTML = `
+
+            const bubbleHTML = ` 
                 <div class="bubble">
-                    <p><strong>${username}</strong></p>
+                    <p style="font-size: 0.9rem; color: #555; margin: 0 0 8px 0;"><strong>${username}</strong></p> <!-- Smaller username -->
                     <p>${message}</p>
                     <div class="timestamp">${new Date(timestamp).toLocaleTimeString()}</div>
                 </div>
             `;
-            messageElement.innerHTML = bubbleHTML;
-            messagesContainer.appendChild(messageElement);
-
-            // Scroll to bottom if at bottom
-            if (isAtBottom) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            if (!isSent) {
+                messageElement.innerHTML = `<div class="userIcon">👤</div>${bubbleHTML}`;
+            } else {
+                messageElement.innerHTML = bubbleHTML;
             }
+
+            messagesContainer.appendChild(messageElement);
         }
 
-        // Automatically fetch messages every 2 seconds
+        document.getElementById("messages").addEventListener('scroll', function() {
+            const messagesContainer = document.getElementById('messages');
+            const isAtBottomNow = messagesContainer.scrollHeight - messagesContainer.scrollTop === messagesContainer.clientHeight;
+
+            isAtBottom = isAtBottomNow;  // Update the scroll position status
+        });
+
         window.onload = function() {
             fetchMessages();
-            setInterval(fetchMessages, 2000);  // Fetch new messages every 2 seconds
+            setInterval(fetchMessages, 1000); // Check for new messages every second
         };
     </script>
 
